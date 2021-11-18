@@ -25,6 +25,8 @@ import asyncio
 import argparse
 #emo
 from emo import emo_send
+#other
+from Timer import *
 
 global Temp
 global Hum
@@ -38,10 +40,17 @@ Presence=False
 global RGB
 RGB=[
         [0,0,0],
-        [255,0,0],
+        [255,255,0],
         [0,255,0],
-        [0,0,255],
+        [0,255,128],
         [255,255,255],
+    ]
+global msg
+msg=[
+        "",
+        "土が乾燥してるよ、水をあげよう",
+        "土はいい感じ",
+        "水あげすぎだよ",
     ]
 global alpha
 alpha=255
@@ -68,7 +77,14 @@ async def main(device):
         global button
         button=False
         #function
-
+        def LED_to_soil(soil):
+            if 0.0 <= soil and soil < 29.33:
+                d=1
+            elif 29.33 <= soil and soil < 68.43:
+                d=2
+            elif 68.43 <= soil:
+                d=3
+            return d
         def input_cb(pin, level):
             global button
             if level:
@@ -87,7 +103,10 @@ async def main(device):
             global Temp
             global Hum
             global Press
-            logging.info("Ain{}: {:.2f}V/{}[℃],{}[%],{}[hPa]".format(pin, val,Temp,Hum,Press))
+            global soil
+            if pin==0:
+                soil=(val/3.3)*100
+                logging.info("Ain{}: {:.2f}V/soil={:.2f}%/{}[℃],{}[%],{}[hPa]".format(pin, val,soil,Temp,Hum,Press))
         device.io.analog.set_input_cb(Ainput_cb)
 
         # setup ADC read period to 0.5s, ref to VDD (3.3V) and enable all pins as input
@@ -111,6 +130,7 @@ async def main(device):
             global Presence
             Presence=pres
             print("Presence1:", pres)
+
         #気温,湿度,気圧
         global Temp
         global Hum
@@ -120,10 +140,23 @@ async def main(device):
         await device.builtin.pressure.set_callback(pressure_cb)
         #人感センサ設定
         await device.builtin.presence.set_callback(presence_cb)
-
+        global soil
+        soil=0.00
         d=0
+        sendflag=False
+        t1=Timer()
         while True:
-            print(Temp,Hum,Press)
+            if Presence:
+                if not sendflag:
+                    d=LED_to_soil(soil)
+                    emomsg="気温"+str(Temp)+"度,湿度"+str(Hum)+"％,"+str(Press)+"ヘクトパスカルだよ。"+msg[d]
+                    #emo_send(emomsg,[RGB[d][0],RGB[d][1],RGB[d][2]])
+                    sendflag=True
+                t1.reset()
+            else:
+                d=0
+                if t1.stand_by(10):
+                    sendflag=False
             await device.builtin.rgbled.set(RGB[d][0],RGB[d][1],RGB[d][2],alpha,100)
             await asyncio.sleep(1)
     except (asyncio.CancelledError, KeyboardInterrupt):
