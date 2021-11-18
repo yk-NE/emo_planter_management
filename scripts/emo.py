@@ -21,16 +21,15 @@ def emo_send(msg="",c=[],m=[]):
     Uncomment code block you want to execute.
     If you execute a lot, watch out for the API rate limit.
     """
-
-    #Message Send and LED Change
-    if len(msg) != 0:
-        send_msg(msg)
-
     if len(c)==3:
         print(c)
         color=Color(c[0],c[1],c[2])
         #print(change_led_color(color))
         change_led_color(color)
+
+    #Message Send and LED Change
+    if len(msg) != 0:
+        send_msg(msg)
 
     if len(m)==2:
         print(m)
